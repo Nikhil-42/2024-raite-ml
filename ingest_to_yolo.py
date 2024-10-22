@@ -1,6 +1,9 @@
 import argparse
 import pathlib
 
+# Example usage
+# python ingest_to_yolo.py data/\[01\]\ Training\ Only/20241021_RAITE_pumba/ data/ugv_dataset_v7/train/ --prefix 20241021_RAITE_pumba --class_id 6
+# python ingest_to_yolo.py data/\[01\]\ Training\ Only/20241021_RAITE_spot/ data/ugv_dataset_v7/train/ --prefix 20241021_RAITE_spot --class_id 4
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=pathlib.Path)
