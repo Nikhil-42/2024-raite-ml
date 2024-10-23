@@ -21,7 +21,7 @@ def exposure(image, bboxes):
     return cv2.convertScaleAbs(image, alpha=alpha, beta=beta), bboxes
 
 def speckle_noise(image, bboxes):
-    np.random.seed(random.random())
+    np.random.seed(random.randrange(0, 2**32))
     rands = np.random.random((*image.shape[:-1], 1))
     image *= (1 - (rands > 0.975))
     image = cv2.add(image, (rands < 0.025) * 255)
@@ -31,7 +31,8 @@ def guassian_noise(image, bboxes):
     pass
 
 def greyscale(image, bboxes):
-    pass
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR), bboxes
 
 def cutout(image, bboxes): 
     x, y, w, h = (random.random() for _ in range(4))
@@ -50,6 +51,8 @@ def cutout(image, bboxes):
     image = cv2.rectangle(image, (int(x * width), int(y * height)), (int((x + w) * width), int((y + h) * height)), (0, 0, 0), -1)
     return image, bboxes
 
+# Example usage
+# python augment_data.py data/\[01\]\ Training\ Only/20241021_RAITE_spot/ data/ugv_dataset_v7/train/ --multiplicity 5 --blur --cutout --brightness --exposure
 if __name__ == "__main__":
     import os
     
@@ -61,6 +64,7 @@ if __name__ == "__main__":
     parser.add_argument('--brightness', action='store_true')
     parser.add_argument('--exposure', action='store_true')
     parser.add_argument('--speckle_noise', action='store_true')
+    parser.add_argument('--greyscale', action='store_true')
     parser.add_argument('--cutout', action='store_true')
     args = parser.parse_args()
 
@@ -68,9 +72,7 @@ if __name__ == "__main__":
     output_data: pathlib.Path = args.output
     assert (input_data / "labels").exists()
 
-    for image_path in (input_data).glob("*.*"):
-        new_name = f"{args.prefix}_{image_path.name}"
-        
+    for image_path in (input_data).glob("*.*"):        
         label_path = input_data / "labels" / image_path.with_suffix('.txt').name
         print(f"Image: {image_path}")
         print(f"Label: {label_path}")
@@ -87,23 +89,40 @@ if __name__ == "__main__":
                 (int(line.split()[0]), *(float(x) for x in line.split()[1:]))
             ) for line in label_path.read_text().splitlines()
         ]
-        output_image_path = output_data / "images" / new_name
-        output_label_path = (output_data / "labels" / new_name).with_suffix('.txt')
-        print("\tCopying Image to", output_image_path)
-        output_image_path.write_bytes(image_path.read_bytes())
+        for i in range(args.multiplicity):
+            augmentations = {}
+            if args.blur:
+                augmentations['blur'] = blur
+            if args.brightness:
+                augmentations['brightness'] = brightness
+            if args.exposure:
+                augmentations['exposure'] = exposure
+            if args.speckle_noise:
+                augmentations['speckle_noise'] = speckle_noise
+            if args.greyscale:
+                augmentations['greyscale'] = greyscale
+            if args.cutout:
+                augmentations['cutout'] = cutout
+            
+            for name, augmentation in augmentations.items():
+                new_name = f"{name}_{i}_{image_path.name}"
+                output_image_path = output_data / "images" / new_name
+                output_label_path = (output_data / "labels" / new_name).with_suffix('.txt')
+                print("\tCopying Image to", output_image_path)
+                
+                # Transform and write the image
+                img = cv2.imread(str(image_path))
+                new_img, _ = augmentation(img, bboxes)
+                cv2.imwrite(str(output_image_path), new_img)
 
-        print("\tCopying Label to", output_label_path)
-        
-        new_bounding_boxes = ""
-        for line in label_path.read_text().splitlines():
-            class_id, x_center, y_center, width, height = line.split()
-            if args.class_id is not None:
-                class_id = args.class_id
-            elif args.class_map is not None:
-                class_id = args.class_map[int(class_id)]
-            new_bounding_boxes = f"{class_id} {x_center} {y_center} {width} {height}\n"
-        
-        output_label_path.write_text(new_bounding_boxes)
+                print("\tCopying Label to", output_label_path)
+                
+                new_bounding_boxes = ""
+                for line in label_path.read_text().splitlines():
+                    class_id, x_center, y_center, width, height = line.split()
+                    new_bounding_boxes = f"{class_id} {x_center} {y_center} {width} {height}\n"
+                
+                output_label_path.write_text(new_bounding_boxes)
     
     
     
