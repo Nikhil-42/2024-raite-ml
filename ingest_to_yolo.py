@@ -1,14 +1,21 @@
 import argparse
+from ast import parse
 import pathlib
+import json
+from pydoc import apropos
 
 # Example usage
 # python ingest_to_yolo.py data/\[01\]\ Training\ Only/20241021_RAITE_pumba/ data/ugv_dataset_v7/train/ --prefix 20241021_RAITE_pumba --class_id 6
-# python ingest_to_yolo.py data/\[01\]\ Training\ Only/20241021_RAITE_spot/ data/ugv_dataset_v7/train/ --prefix 20241021_RAITE_spot --class_id 4
+# python ingest_to_yolo.py data/\[01\]\ Training\ Only/20241021_RAITE_spot/ data/ugv_dataset_v7/train/ --prefix 20241021_RAITE_spot --class_map {2: 4}
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=pathlib.Path)
     parser.add_argument("output", type=pathlib.Path)
-    parser.add_argument("--class_id", type=int, default=None)
+
+    class_id_args = parser.add_mutually_exclusive_group()
+    class_id_args.add_argument("--class_id", type=int, default=None)
+    class_id_args.add_argument("--class_map", type=eval, default=None)
+
     parser.add_argument("--prefix", type=str)
     args = parser.parse_args()
     
@@ -39,7 +46,10 @@ if __name__ == "__main__":
         new_bounding_boxes = ""
         for line in label_path.read_text().splitlines():
             class_id, x_center, y_center, width, height = line.split()
-            class_id = args.class_id if args.class_id is not None else class_id
+            if args.class_id is not None:
+                class_id = args.class_id
+            elif args.class_map is not None:
+                class_id = args.class_map[int(class_id)]
             new_bounding_boxes = f"{class_id} {x_center} {y_center} {width} {height}\n"
         
         output_label_path.write_text(new_bounding_boxes)
