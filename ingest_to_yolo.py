@@ -50,7 +50,7 @@ if __name__ == "__main__":
                 class_id = args.class_id
             elif args.class_map is not None:
                 class_id = args.class_map[int(class_id)]
-            new_bounding_boxes = f"{class_id} {x_center} {y_center} {width} {height}\n"
+            new_bounding_boxes += f"{class_id} {x_center} {y_center} {width} {height}\n"
         
         output_label_path.write_text(new_bounding_boxes)
     
