@@ -1,3 +1,4 @@
+from seaborn import reset_defaults
 from ultralytics import YOLO
 import argparse
 
@@ -22,8 +23,12 @@ model = YOLO(args.model)  # load a pretrained model (recommended for training)
 
 # Train the model
 # results = model.train(data="l")
-results = model.train(data=f"{args.data}/data.yaml", batch=-1, epochs=args.epochs, imgsz=args.imgsz, cache=True, save_period=20, workers=8)
+# results = model.train(data=f"{args.data}/data.yaml", batch=-1, epochs=args.epochs, imgsz=args.imgsz, cache=True, save_period=20, workers=8)
 
-model_iteration = 0;
-if args.overwrite:
-    model.save(args.model)
+result = model.predict('/home/kapow/Development/2024-raite-ml/data/ugv_dataset_v8/train/images/152.png')
+
+import pdb; pdb.set_trace()
+
+# model_iteration = 0;
+# if args.overwrite:
+#     model.save(args.model)
