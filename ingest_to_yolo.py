@@ -1,8 +1,6 @@
 import argparse
-from ast import parse
 import pathlib
-import json
-from pydoc import apropos
+import re
 
 # Example usage
 # python ingest_to_yolo.py data/\[01\]\ Training\ Only/20241021_RAITE_pumba/ data/ugv_dataset_v7/train/ --prefix 20241021_RAITE_pumba --class_id 6
@@ -11,6 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=pathlib.Path)
     parser.add_argument("output", type=pathlib.Path)
+    parser.add_argument("--filter", type=re.compile, help="A regex to filter filenames", default=re.compile('.*'))
 
     class_id_args = parser.add_mutually_exclusive_group()
     class_id_args.add_argument("--class_id", type=int, default=None)
@@ -21,11 +20,15 @@ if __name__ == "__main__":
     
     input_data: pathlib.Path = args.input
     output_data: pathlib.Path = args.output
-    assert (input_data / "labels").exists()
-    for image_path in (input_data).glob("*.*"):
+    label_input_data = input_data # pathlib.Path('/blue/jshin2/iyer.nikhil/_ugv_dataset_v8/train')
+    assert (label_input_data / "labels").exists()
+    for image_path in (input_data / "images").glob("*.*"):
+        if re.fullmatch(args.filter, image_path.name) is None:
+            print("Ignoring", image_path)
+            continue
         new_name = f"{args.prefix}_{image_path.name}"
         
-        label_path = input_data / "labels" / image_path.with_suffix('.txt').name
+        label_path = label_input_data / "labels" / image_path.with_suffix('.txt').name
         print(f"Image: {image_path}")
         print(f"Label: {label_path}")
         if not label_path.exists():
@@ -51,6 +54,5 @@ if __name__ == "__main__":
             elif args.class_map is not None:
                 class_id = args.class_map[int(class_id)]
             new_bounding_boxes += f"{class_id} {x_center} {y_center} {width} {height}\n"
-        
         output_label_path.write_text(new_bounding_boxes)
     
