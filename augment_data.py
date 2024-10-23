@@ -22,8 +22,8 @@ def exposure(image, bboxes):
 
 def speckle_noise(image, bboxes):
     np.random.seed(random.randrange(0, 2**32))
-    rands = np.random.random((*image.shape[:-1], 1))
-    image *= (1 - (rands > 0.975))
+    rands = np.random.random(image.shape)
+    image *= (rands <= 0.975)
     image = cv2.add(image, (rands < 0.025) * 255)
     return image, bboxes
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     output_data: pathlib.Path = args.output
     assert (input_data / "labels").exists()
 
-    for image_path in (input_data).glob("*.*"):        
+    for image_path in (input_data / "images").glob("*.*"):        
         label_path = input_data / "labels" / image_path.with_suffix('.txt').name
         print(f"Image: {image_path}")
         print(f"Label: {label_path}")
@@ -105,7 +105,7 @@ if __name__ == "__main__":
                 augmentations['cutout'] = cutout
             
             for name, augmentation in augmentations.items():
-                new_name = f"{name}_{i}_{image_path.name}"
+                new_name = f"{image_path.stem}_{name}_{i}{image_path.suffix}"
                 output_image_path = output_data / "images" / new_name
                 output_label_path = (output_data / "labels" / new_name).with_suffix('.txt')
                 print("\tCopying Image to", output_image_path)
@@ -120,7 +120,7 @@ if __name__ == "__main__":
                 new_bounding_boxes = ""
                 for line in label_path.read_text().splitlines():
                     class_id, x_center, y_center, width, height = line.split()
-                    new_bounding_boxes = f"{class_id} {x_center} {y_center} {width} {height}\n"
+                    new_bounding_boxes += f"{class_id} {x_center} {y_center} {width} {height}\n"
                 
                 output_label_path.write_text(new_bounding_boxes)
     
